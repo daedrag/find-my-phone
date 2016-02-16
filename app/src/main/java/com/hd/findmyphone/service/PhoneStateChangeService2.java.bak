@@ -1,0 +1,138 @@
+package com.example.daoducduy0511.myapplication;
+
+import android.app.IntentService;
+import android.app.Service;
+import android.content.Context;
+import android.content.Intent;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.IBinder;
+import android.os.Looper;
+import android.os.Message;
+import android.os.Process;
+import android.util.Log;
+
+public class PhoneStateChangeService2 extends Service {
+    private final String CLASS_NAME = this.getClass().getSimpleName();
+
+    private static final int ACTION_ENABLE_LOCATION_ID = 0;
+    private static final int ACTION_DISABLE_LOCATION_ID = 1;
+
+    private static final String ACTION_ENABLE_LOCATION = "com.example.daoducduy0511.myapplication.action.ENABLE_LOCATION";
+    private static final String ACTION_DISABLE_LOCATION = "com.example.daoducduy0511.myapplication.action.DISABLE_LOCATION";
+
+    private Looper mServiceLooper;
+    private ServiceHandler mServiceHandler;
+
+    // Handler that receives messages from the thread
+    private final class ServiceHandler extends Handler {
+        public ServiceHandler(Looper looper) {
+            super(looper);
+        }
+        @Override
+        public void handleMessage(Message msg) {
+            // Normally we would do some work here, like download a file.
+            // For our sample, we just sleep for 5 seconds.
+            try {
+                switch (msg.arg2) {
+                    case ACTION_ENABLE_LOCATION_ID:
+                        Log.d(CLASS_NAME, "Enable location service");
+                        NotificationUtil.getInstance().show(getApplicationContext(),
+                                NotificationUtil.CONTENT_TYPE.INFO,
+                                getResources().getString(R.string.app_name),
+                                "From Service: Location service enabled");
+                        break;
+                    case ACTION_DISABLE_LOCATION_ID:
+                        Log.d(CLASS_NAME, "Disable location service");
+                        NotificationUtil.getInstance().show(getApplicationContext(),
+                                NotificationUtil.CONTENT_TYPE.WARNING,
+                                getResources().getString(R.string.app_name),
+                                "From Service: Location service disabled");
+                        break;
+                    default:
+                        Log.d(CLASS_NAME, "Unrecognized arg2 " + msg.arg2);
+                }
+            } catch (Exception e) {
+                // Restore interrupt status.
+                Thread.currentThread().interrupt();
+            }
+            // Stop the service using the startId, so that we don't stop
+            // the service in the middle of handling another job
+            stopSelf(msg.arg1);
+        }
+    }
+
+    @Override
+    public void onCreate() {
+        // Start up the thread running the service.  Note that we create a
+        // separate thread because the service normally runs in the process's
+        // main thread, which we don't want to block.  We also make it
+        // background priority so CPU-intensive work will not disrupt our UI.
+        HandlerThread thread = new HandlerThread("ServiceStartArguments",
+                Process.THREAD_PRIORITY_BACKGROUND);
+        thread.start();
+
+        // Get the HandlerThread's Looper and use it for our Handler
+        mServiceLooper = thread.getLooper();
+        mServiceHandler = new ServiceHandler(mServiceLooper);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        Log.d(CLASS_NAME, "service starting");
+
+        // For each start request, send a message to start a job and deliver the
+        // start ID so we know which request we're stopping when we finish the job
+        Message msg = mServiceHandler.obtainMessage();
+        msg.arg1 = startId;
+
+        if (intent != null) {
+            final String action = intent.getAction();
+            if (ACTION_ENABLE_LOCATION.equals(action)) {
+                msg.arg2 = ACTION_ENABLE_LOCATION_ID;
+            } else if (ACTION_DISABLE_LOCATION.equals(action)) {
+                msg.arg2 = ACTION_DISABLE_LOCATION_ID;
+            }
+        }
+
+        mServiceHandler.sendMessage(msg);
+
+        // If we get killed, after returning from here, restart
+        return START_STICKY;
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        // We don't provide binding, so return null
+        return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        Log.d(CLASS_NAME, "service done");
+    }
+
+    /**
+     * Starts this service to perform action Enable Location Service with the given parameters. If
+     * the service is already performing a task this action will be queued.
+     *
+     * @see IntentService
+     */
+    public static void startActionEnableLocation(Context context) {
+        Intent intent = new Intent(context, PhoneStateChangeService2.class);
+        intent.setAction(ACTION_ENABLE_LOCATION);
+        context.startService(intent);
+    }
+
+    /**
+     * Starts this service to perform action Disable Location Service with the given parameters. If
+     * the service is already performing a task this action will be queued.
+     *
+     * @see IntentService
+     */
+    public static void startActionDisableLocation(Context context) {
+        Intent intent = new Intent(context, PhoneStateChangeService2.class);
+        intent.setAction(ACTION_DISABLE_LOCATION);
+        context.startService(intent);
+    }
+}

@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Find My Phone</string>
+    <string name="action_settings">Settings</string>
+    <string name="disable_location">Disable Location</string>
+    <string name="enable_location">Enable Location</string>
+    <string name="enable_wifi">Enable Wifi</string>
+    <string name="disable_wifi">Disable Wifi</string>
+</resources>
